@@ -11,15 +11,20 @@ try { $active = Get-BEActiveJobDetail } catch { $active = @() }
 
 $activeByName = @{}
 foreach ($a in $active) {
+
     $n = $null
+
     if ($a.PSObject.Properties.Name -contains 'JobName') { $n = $a.JobName }
     elseif ($a.PSObject.Properties.Name -contains 'Name') { $n = $a.Name }
+
     if ($n -and -not $activeByName.ContainsKey($n)) { $activeByName[$n] = $a }
+
 }
 
 $jobs = Get-BEJob
 
 foreach ($job in $jobs) {
+
     if (-not $job.Name) { continue }
 
     # >>> FILTRO: ignora qualquer coisa que NÃO seja BACKUP (ex.: Restore)
@@ -41,11 +46,26 @@ foreach ($job in $jobs) {
         $runtime = [int]([TimeSpan]($end - $start)).TotalSeconds
     }
 
+    # Frequence (inferido pelo Schedule)
+    $frequence = 'Other'
+    $scheduleText = [string]$job.Schedule
+    if ($scheduleText -match 'Every 1 month') {
+        $frequence = 'Monthly'
+    }
+    elseif ($scheduleText -match 'Every 1 day') {
+        $frequence = 'Daily'
+    }
+    elseif ($scheduleText -match 'Every 1 week') {
+        $frequence = 'Weekly'
+    }
+
     # Active state/progress
     $state = $result
     $progress = $null
     if ($activeByName.ContainsKey($job.Name)) {
+
         $a = $activeByName[$job.Name]
+
         if ($a.PSObject.Properties.Name -contains 'State') { $state = $a.State }
         elseif ($a.PSObject.Properties.Name -contains 'Status') { $state = $a.Status }
         else { $state = 'Running' }
@@ -55,6 +75,7 @@ foreach ($job in $jobs) {
         elseif ($a.PSObject.Properties.Name -contains 'PercentComplete') { $progress = $a.PercentComplete }
          
         if ($state -eq 'Running') { $result = 'Running' }
+
     }
 
     # Output final
@@ -62,13 +83,14 @@ foreach ($job in $jobs) {
         JobName          = $job.Name
         ScheduleEnabled  = $scheduleEnabled
         Schedule         = $job.Schedule
+        Frequence        = $frequence
         NextStartDate    = $job.NextStartDate
         JobTypeString    = $job.JobType
         TaskType         = $job.TaskType
         StartTime        = $start
         EndTime          = $end
         State            = $state
-	Status 		 = $job.Status
+	    Status 		 = $job.Status
         BaseProgress     = $progress
         Result           = $result
         RuntimeSeconds   = $runtime
@@ -77,4 +99,5 @@ foreach ($job in $jobs) {
         Priority         = $job.Priority
         Storage          = $job.Storage
     }
+
 }
