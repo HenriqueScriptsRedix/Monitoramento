@@ -27,7 +27,7 @@ Documento consiste em documentar ideias que surgem para monitoramento de control
         * 4771 — falha na pré-autenticação Kerberos
         * 4777 — falha na validação de credenciais NTLM
         * 4740 — conta de usuário bloqueada
-* Patches de segurança sem aplicar nos últimos 90 dias
+* Patches de segurança sem aplicar nos últimos X dias
     * OBS: Talvez enquadre um monitoramento incluso no padrão dos servidores Windows
 * SMB 1.0 habilitado
 * SMB Signing não exigido
