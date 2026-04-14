@@ -29,10 +29,13 @@ Documento consiste em documentar ideias que surgem para monitoramento de control
         * 4740 — conta de usuário bloqueada
 * Patches de segurança sem aplicar nos últimos X dias
     * OBS: Talvez enquadre um monitoramento incluso no padrão dos servidores Windows
-* SMB 1.0 habilitado
-* SMB Signing não exigido
-* LDAP signing não exigido
-* LDAP Channel binding não exigido
+* SMB 1.0 habilitado - ESTUDAR
+* SMB Signing não exigido - ESTUDAR
+* LDAP signing não exigido - ESTUDAR
+* LDAP Channel binding não exigido - ESTUDAR
 * Contas privilegiadas fora de Protected Users
 * X contas em grupos administrativos 
 * NTDM habilitado
+* LSASS / LSA protection desabilitada - ESTUDAR
+* contas com Kerberos preauthentication desabilitada - ESTUDAR
+* Netlogon enforcement não habilitado - DEIXAR PRA DEPOIS
