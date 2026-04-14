@@ -52,12 +52,44 @@ foreach ($TAPEJOB in $TAPEJOBS) {
     } catch {
         $JOBSESSION = $null
     }
-    
-    #RuntimeSeconds
+
+    # RuntimeSeconds
     $RuntimeSeconds = 0
-    if ($JOBSESSION.CreationTime -and $JOBSESSION.EndTime -and $JOBSESSION.EndTime -gt $JOBSESSION.CreationTime) {
+    if ($null -ne $JOBSESSION -and
+        $JOBSESSION.CreationTime -and
+        $JOBSESSION.EndTime -and
+        $JOBSESSION.EndTime -gt $JOBSESSION.CreationTime) {
         $RuntimeSeconds = [int](($JOBSESSION.EndTime - $JOBSESSION.CreationTime).TotalSeconds)
     }
+
+    # Regra de Storage para Tape
+    $MediaPoolName = $null
+
+    # 1) Pool principal / full / GFS
+    if ($null -ne $TAPEJOB.FullBackupMediaPool) {
+        $MediaPoolName = $TAPEJOB.FullBackupMediaPool.Name
+    }
+
+    # 2) Fallback para incremental
+    if ([string]::IsNullOrWhiteSpace($MediaPoolName) -and $null -ne $TAPEJOB.IncrementalBackupMediaPool) {
+        $MediaPoolName = $TAPEJOB.IncrementalBackupMediaPool.Name
+    }
+
+    # 3) Fallback para Target
+    if ([string]::IsNullOrWhiteSpace($MediaPoolName) -and $null -ne $TAPEJOB.Target) {
+        if ($TAPEJOB.Target.PSObject.Properties.Match('Name').Count -gt 0) {
+            $MediaPoolName = $TAPEJOB.Target.Name
+        } else {
+            $MediaPoolName = [string]$TAPEJOB.Target
+        }
+    }
+
+    # 4) Fallback final
+    if ([string]::IsNullOrWhiteSpace($MediaPoolName)) {
+        $MediaPoolName = "Unknown"
+    }
+
+    $StorageDetail = "Tape (Media Pool: $MediaPoolName)"
 
     if ($null -ne $JOBSESSION) {
         [PSCustomObject]@{
@@ -71,6 +103,7 @@ foreach ($TAPEJOB in $TAPEJOBS) {
             BaseProgress     = $JOBSESSION.BaseProgress
             Result           = $JOBSESSION.Result
             RuntimeSeconds   = $RuntimeSeconds
+            StorageDetail    = $StorageDetail
         }
     }
 }
