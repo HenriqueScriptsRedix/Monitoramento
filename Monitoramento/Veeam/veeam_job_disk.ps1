@@ -387,13 +387,6 @@ function Format-SobrRepositoryDetail {
         $parts += "Capacity: $($capacityItems -join ' ')"
     }
 
-    $archiveItems = Format-SobrObjectTierItems -Sobr $Sobr -CandidatePropertyNames @(
-        'ArchiveExtent','ArchiveTier','ArchiveRepository'
-    )
-    if ($archiveItems.Count -gt 0) {
-        $parts += "Archive: $($archiveItems -join ' ')"
-    }
-
     if ($parts.Count -eq 0) {
         return "SOBR [ $sobrName ]"
     }
@@ -408,6 +401,23 @@ function Resolve-StorageDetailFromJob {
     if (-not $repository) { return 'Unknown' }
 
     if (Test-IsScaleOutRepository -Repository $repository) {
+        $repoId   = Get-SafeMemberValue -Object $repository -Name 'Id'
+        $repoName = [string](Get-SafeMemberValue -Object $repository -Name 'Name')
+
+        $fullSobr = $null
+
+        if ($repoId) {
+            $fullSobr = $script:AllScaleOutRepositories | Where-Object Id -eq $repoId | Select-Object -First 1
+        }
+
+        if (-not $fullSobr -and $repoName) {
+            $fullSobr = $script:AllScaleOutRepositories | Where-Object Name -eq $repoName | Select-Object -First 1
+        }
+
+        if ($fullSobr) {
+            return Format-SobrRepositoryDetail -Sobr $fullSobr
+        }
+
         return Format-SobrRepositoryDetail -Sobr $repository
     }
 

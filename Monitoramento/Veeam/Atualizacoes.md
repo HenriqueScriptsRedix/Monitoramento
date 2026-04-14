@@ -4,28 +4,15 @@
 
 Padronizar a identificação do destino de armazenamento dos jobs monitorados, criando uma classificação simples e consistente para exibição e coleta.
 
-A proposta é separar o comportamento em dois níveis:
+A proposta final é utilizar **um único campo** de saída:
 
-- **Campo principal**: identifica a categoria do storage
-- **Campo de detalhe**: descreve o destino de forma legível
+- **StorageDetail**: descrição legível do destino do backup
 
 ---
 
-## Campos propostos
-
-### Campo principal
-
-    StorageType
-
-Valores possíveis:
-
-- `Tape`
-- `Disk`
-- `SOBR`
+## Campo adotado
 
 ### Campo de detalhe
-
-Sugestão de nome:
 
     StorageDetail
 
@@ -35,21 +22,18 @@ Esse campo será usado para exibir o nome, tipo e destino do storage de forma am
 
 ## Regra principal de classificação
 
-A definição do `StorageType` seguirá esta prioridade:
+A definição do `StorageDetail` seguirá esta prioridade lógica:
 
-1. Se o job for de fita, o tipo será **Tape**
-2. Se o destino for um **Scale-Out Backup Repository**, o tipo será **SOBR**
-3. Nos demais casos, o tipo será **Disk**
+1. Se o job for de fita, exibir como **Tape**
+2. Se o destino for um **Scale-Out Backup Repository**, exibir como **SOBR**
+3. Se o destino for object storage AWS, exibir como **S3**
+4. Nos demais casos, exibir como **Disk**
 
 ---
 
 ## Possibilidades por tipo
 
 ### 1. Tape
-
-#### StorageType
-
-    Tape
 
 #### Formato do detalhe
 
@@ -63,16 +47,11 @@ A definição do `StorageType` seguirá esta prioridade:
 
 Quando o job utilizar fita como destino, o monitoramento deve:
 
-- classificar o `StorageType` como `Tape`
 - exibir no detalhe o nome do **Media Pool** associado ao job
 
 ---
 
 ### 2. Disk
-
-#### StorageType
-
-    Disk
 
 #### Formato-base do detalhe
 
@@ -80,13 +59,11 @@ Quando o job utilizar fita como destino, o monitoramento deve:
 
 #### Regra de negócio
 
-Quando o job utilizar um repositório único e não for SOBR nem Tape, o monitoramento deve:
+Quando o job utilizar um repositório único e não for SOBR, Tape ou S3, o monitoramento deve exibir:
 
-- classificar o `StorageType` como `Disk`
-- exibir no detalhe:
-  - o nome do repositório
-  - o tipo do repositório
-  - o caminho, bucket ou destino correspondente
+- o nome do repositório
+- o tipo do repositório
+- o caminho ou destino correspondente
 
 ---
 
@@ -138,54 +115,53 @@ O objetivo é deixar claro no monitoramento que o destino possui característica
 
 ---
 
-### 2.4 Object Storage como repositório único
-
-Mesmo sendo tecnicamente object storage, dentro desta taxonomia simplificada ele será classificado como **Disk**, pois não é Tape nem SOBR.
-
-#### Exemplos
-
-    Disk [ Repository_08 ( Object Storage: Amazon S3 / bucket-backup-prod ) ]
-    Disk [ Repository_09 ( Object Storage: Azure Blob / container-veeam ) ]
-    Disk [ Repository_10 ( Object Storage: Wasabi / bucket01 ) ]
-
-#### Regra
-
-Quando o destino for um object storage repository isolado, exibir:
-
-- nome do repositório
-- identificador `Object Storage`
-- provedor e bucket/container correspondente
-
----
-
-### 3. SOBR
-
-#### StorageType
-
-    SOBR
+### 3. S3
 
 #### Formato-base do detalhe
 
-    SOBR [ <SobrName> | Performance: (...) | Capacity: (...) | Archive: (...) ]
+    S3 [ <RepositoryName> ( Object Storage: Amazon S3 ) ]
+
+#### Exemplos
+
+    S3 [ S3_AWS ( Object Storage: Amazon S3 ) ]
+    S3 [ AWS_S3 ( Object Storage: Amazon S3 ) ]
 
 #### Regra de negócio
 
-Quando o destino do job for um **Scale-Out Backup Repository**, o monitoramento deve:
+Quando o destino for object storage AWS, o monitoramento deve:
 
-- classificar o `StorageType` como `SOBR`
-- exibir no detalhe:
-  - nome do SOBR
-  - tier de performance, se existir
-  - tier de capacity, se existir
-  - tier de archive, se existir
+- exibir o prefixo `S3`
+- exibir o nome do repositório
+- exibir `Object Storage: Amazon S3`
+
+Não é necessário detalhar bucket ou container.
+
+---
+
+### 4. SOBR
+
+#### Formato-base do detalhe
+
+    SOBR [ <SobrName> | Performance: (...) | Capacity: (...) ]
+
+#### Regra de negócio
+
+Quando o destino do job for um **Scale-Out Backup Repository**, o monitoramento deve exibir:
+
+- nome do SOBR
+- tier de performance, se existir
+- tier de capacity, se existir
 
 A exibição deve listar os componentes disponíveis de acordo com a configuração real do SOBR.
+
+> Observação:
+> O tier **Archive** não será exibido na implementação atual.
 
 ---
 
 ## Subregras para SOBR
 
-### 3.1 SOBR com apenas Performance Tier
+### 4.1 SOBR com apenas Performance Tier
 
 #### Formato
 
@@ -197,11 +173,11 @@ Quando o SOBR possuir apenas performance tier, exibir somente os extents dessa c
 
 ---
 
-### 3.2 SOBR com Performance + Capacity
+### 4.2 SOBR com Performance + Capacity
 
 #### Formato
 
-    SOBR [ SOBR_02 | Performance: (REPO_01: /backup) | Capacity: (Amazon S3: bucket-veeam-capacity) ]
+    SOBR [ SOBR_02 | Performance: (REPO_01: /backup) | Capacity: (AWS_S3) ]
 
 #### Regra
 
@@ -209,25 +185,23 @@ Quando o SOBR possuir performance tier e capacity tier, exibir ambos no detalhe.
 
 ---
 
-### 3.3 SOBR com Performance + Capacity + Archive
+### 4.3 SOBR sem detalhamento disponível
 
 #### Formato
 
-    SOBR [ SOBR_03 | Performance: (REPO_01: /backup) | Capacity: (Amazon S3: bucket-veeam-capacity) | Archive: (Azure Archive: archive-container) ]
+    SOBR [ SOBR_02 ]
 
 #### Regra
 
-Quando o SOBR possuir os três níveis, exibir os três no detalhe.
+Quando o script conseguir identificar que o destino é um SOBR, mas não conseguir expandir os tiers disponíveis, o monitoramento deve exibir ao menos o nome do SOBR.
+
+Esse comportamento é aceito como fallback para preservar a identificação correta do destino.
 
 ---
 
 ## Resumo final da padronização
 
-### Campo principal
-
-    StorageType = Tape | Disk | SOBR
-
-### Campo de detalhe
+### Campo adotado
 
     StorageDetail = descrição legível do destino
 
@@ -237,38 +211,35 @@ Quando o SOBR possuir os três níveis, exibir os três no detalhe.
 
 ### Tape
 
-    StorageType   = Tape
     StorageDetail = Tape (Media Pool: Full-Weekly)
 
 ### Disk — Windows
 
-    StorageType   = Disk
     StorageDetail = Disk [ Repository_01 ( Windows: D:\Backups ) ]
 
 ### Disk — Linux
 
-    StorageType   = Disk
     StorageDetail = Disk [ Repository_02 ( Linux: /mnt/backup ) ]
 
 ### Disk — Hardened
 
-    StorageType   = Disk
     StorageDetail = Disk [ Repository_03 ( Hardened Linux: /backup ) ]
 
-### Disk — Object Storage
+### S3
 
-    StorageType   = Disk
-    StorageDetail = Disk [ Repository_08 ( Object Storage: Amazon S3 / bucket-backup-prod ) ]
+    StorageDetail = S3 [ S3_AWS ( Object Storage: Amazon S3 ) ]
 
 ### SOBR — apenas Performance
 
-    StorageType   = SOBR
     StorageDetail = SOBR [ SOBR_01 | Performance: (REPO_01: C:\Backup) (REPO_02: D:\Backup) ]
 
 ### SOBR — Performance + Capacity
 
-    StorageType   = SOBR
-    StorageDetail = SOBR [ SOBR_02 | Performance: (REPO_01: /backup) | Capacity: (Amazon S3: bucket-veeam-capacity) ]
+    StorageDetail = SOBR [ SOBR_02 | Performance: (Repo_03: E:\Repo_03) | Capacity: (AWS_S3) ]
+
+### SOBR — fallback
+
+    StorageDetail = SOBR [ SOBR_02 ]
 
 ---
 
@@ -278,6 +249,7 @@ A regra de negócio ficará assim:
 
 - **Tape**: sempre exibir o Media Pool
 - **Disk**: sempre exibir nome do repositório, tipo do repositório e caminho/destino
-- **SOBR**: sempre exibir o nome do SOBR e os tiers existentes com seus respectivos destinos
+- **S3**: sempre exibir o nome do repositório e `Object Storage: Amazon S3`
+- **SOBR**: sempre exibir o nome do SOBR e, quando possível, os tiers de Performance e Capacity
 
-Essa será a base para implementação futura no script.
+Essa será a base para implementação e manutenção dos scripts de monitoramento.
